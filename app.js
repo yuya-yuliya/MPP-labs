@@ -1,8 +1,22 @@
+require("./models/Task");
+require("dotenv").config();
+
 const express = require("express");
 const path = require("path");
 const routes = require("./routes/index");
 const layouts = require("express-ejs-layouts");
 const bodyParser = require("body-parser");
+const mongoose = require("mongoose");
+
+mongoose.connect(process.env.DATABASE, { useNewUrlParser: true });
+mongoose.Promise = global.Promise;
+mongoose.connection
+  .on('connected', () => {
+    console.log(`Mongoose connection open on ${process.env.DATABASE}`);
+  })
+  .on('error', (err) => {
+    console.log(`Connection error: ${err.message}`);
+  });
 
 const app = express();
 

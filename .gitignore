@@ -61,7 +61,10 @@ typings/
 .next
 
 # upload folder
-task-list-app/public/uploads/*
+/public/uploads/*
 
 # VSCode
 .vscode/
+
+# Enviroment
+*.env
