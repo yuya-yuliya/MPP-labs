@@ -1,0 +1,42 @@
+    <div class="jumbotron container">
+        <h1>Tasks</h1>
+    </div>
+    <div class="container">
+        <select class="custom-select" id="completedFilter">
+            <option value="All">All</option>
+            <option value="Completed">Complited</option>
+            <option value="Incompleted">Incompleted</option>
+        </select>
+    </div>
+    <div class="container">
+        <table class="table table-nonfluid">
+            <thead>
+                <th scope="col">Title</th>
+                <th scope="col">Completed</th>
+                <th scope="col">Due date</th>
+                <th scope="col">File</th>
+                <th scope="col"></th>
+            </thead>
+            <tbody>
+                <% for (let task of tasks) { %>
+                    <tr>
+                        <th scope="row"><%= task.title %></th>
+                        <th scope="row"><%= task.completed ? "Completed" : "Incompleted" %></th>
+                        <th scope="row"><%= task.dueDate %></th>
+                        <th scope="row">
+                            <a download href="/uploads/<%=task.realFileName%>"><%= task.fileName %></a>
+                        </th>
+                        <td>
+                            <span class="btn-toolbar" role="toolbar" aria-label="Task action buttons" style="display: block; white-space:nowrap;">
+                                <a class="btn btn-primary" role="button" href="/task/<%= task.id %>">Edit</a>
+                            </span>
+                        </td>
+                    </tr>
+                <% } %>
+            </tbody>
+        </table>
+        <div class="btn-toolbar" role="toolbar" aria-label="Action buttons">
+            <a class="btn btn-primary" role="button" href="/task">Add task</a>
+        </div>
+    </div>
+    <script src="/js/index.js"></script>
