@@ -2,6 +2,8 @@ import { Component, OnInit } from "@angular/core";
 import { Task } from "../models/task";
 import { TaskService } from "../services/task.service";
 import { saveAs } from "file-saver";
+import { UserService } from "../services/user.service";
+import { Router } from "@angular/router";
 
 @Component({
   selector: "app-main-page",
@@ -14,7 +16,11 @@ export class MainPageComponent implements OnInit {
   editPanel: boolean;
   selectedIndex: number;
 
-  constructor(private taskService: TaskService) {}
+  constructor(
+    private router: Router,
+    private taskService: TaskService,
+    private userService: UserService
+  ) {}
 
   get visibleTasks(): Task[] {
     if (this.filter !== undefined) {
@@ -27,6 +33,19 @@ export class MainPageComponent implements OnInit {
   ngOnInit() {
     this.getTasks();
     this.editPanel = false;
+  }
+
+  onDelete(taskId: string) {
+    let index = this.tasks.findIndex(task => task._id == taskId);
+    this.taskService.deleteTask(taskId).subscribe(o => {
+      this.tasks.splice(index, 1);
+      this.editPanel = false;
+    });
+  }
+
+  signout() {
+    this.userService.signout();
+    this.router.navigate(["/signin"]);
   }
 
   editHide(value: boolean) {

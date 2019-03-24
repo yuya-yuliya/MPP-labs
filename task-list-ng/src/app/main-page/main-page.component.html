@@ -2,18 +2,26 @@
   <div class="jumbotron container">
     <h1>Tasks</h1>
   </div>
-  <div class="container">
+  <div class="container d-flex">
     <div
-      class="btn-group mr-2"
+      class="btn-group mr-auto"
       role="group"
       aria-label="Add group"
       (click)="onTaskAdd()"
     >
       <button type="button" class="btn btn-primary">Add task</button>
     </div>
+    <div
+      class="btn-group"
+      role="group"
+      aria-label="Signout group"
+      (click)="signout()"
+    >
+      <button type="button" class="btn btn-warning">Sign out</button>
+    </div>
   </div>
   <app-task-edit
-    [tasks]="_tasks"
+    [tasks]="tasks"
     [index]="selectedIndex"
     [editPanel]="editPanel"
     (editHide)="editHide($event)"

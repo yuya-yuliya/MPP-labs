@@ -20,14 +20,11 @@ export class TaskService {
     return this.http.get<Task>(`${this.url}${taskId}`);
   }
 
-  addTask(task: Task, attachedFile): Observable<Task> {
-    return this.http.post<Task>(
-      `${this.url}${task._id}`,
-      this.getFormData(task, attachedFile)
-    );
+  addTask(task: Task, attachedFile: any): Observable<Task> {
+    return this.http.post<Task>(this.url, this.getFormData(task, attachedFile));
   }
 
-  updateTask(task: Task, attachedFile): Observable<Task> {
+  updateTask(task: Task, attachedFile: any): Observable<Task> {
     return this.http.put<Task>(
       `${this.url}${task._id}`,
       this.getFormData(task, attachedFile)
@@ -56,7 +53,7 @@ export class TaskService {
     return this.http.delete(`${this.url}${taskId}/removefile`);
   }
 
-  private getFormData(task: Task, attachedFile): FormData {
+  private getFormData(task: Task, attachedFile: any): FormData {
     let formData = new FormData();
     formData.append("attachedFile", attachedFile);
     Object.getOwnPropertyNames(task).forEach(value => {
