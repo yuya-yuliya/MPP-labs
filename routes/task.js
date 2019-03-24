@@ -4,6 +4,8 @@ const TaskService = require("../services/task.service");
 const multer = require("multer");
 const path = require("path");
 
+const validateToken = require("./utils");
+
 const taskService = new TaskService();
 const uploadsDirectory = path.join(
   path.dirname(require.main.filename),
@@ -23,82 +25,145 @@ var storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 // Get all tasks
-router.get("/", async (request, response) => {
-  let tasks = await taskService.getTasks();
-  response.status(200).send(tasks);
+router.get("/", validateToken, async (request, response) => {
+  let userId = request.userId;
+  if (userId) {
+    let tasks = await taskService.getTasks(userId);
+    response.status(200).send(tasks);
+  } else {
+    response.status(401).send({});
+  }
 });
 
 // Get task by Id
-router.get("/:id", async (request, response) => {
-  let task = await taskService.getTask(request.params.id);
-  if (task) {
-    response.status(200).send(task);
+router.get("/:id", validateToken, async (request, response) => {
+  let userId = request.userId;
+  if (userId) {
+    let task = await taskService.getTask(request.params.id, userId);
+    if (task) {
+      response.status(200).send(task);
+    } else {
+      response.status(404).send({});
+    }
   } else {
-    response.status(404).send({});
+    response.status(401).send({});
   }
 });
 
 // Delete task
-router.delete("/:id", async (request, response) => {
-  await taskService.deleteTask(request.params.id);
-  response.status(204).send({});
+router.delete("/:id", validateToken, async (request, response) => {
+  let userId = request.userId;
+  if (userId) {
+    try {
+      await taskService.deleteTask(request.params.id, userId);
+      response.status(204).send({});
+    } catch {
+      response.status(404).send({});
+    }
+  } else {
+    response.status(401).send({});
+  }
 });
 
 // Update task
-router.put("/:id", upload.single("attachedFile"), async (request, response) => {
-  let oldTask = await taskService.getTask(request.params.id);
-  let file = request.file || {
-    filename: oldTask.fileName,
-    originalname: oldTask.realFileName
-  };
-  let taskIsCompleted = "true" == request.body.completed;
-  let task = {
-    _id: request.params.id,
-    title: request.body.title,
-    completed: taskIsCompleted,
-    dueDate: request.body.dueDate,
-    fileName: file.originalname,
-    realFileName: file.filename
-  };
-  task = await taskService.updateTask(task);
-  response.status(200).send(task);
-});
+router.put(
+  "/:id",
+  validateToken,
+  upload.single("attachedFile"),
+  async (request, response) => {
+    let userId = request.userId;
+    if (userId) {
+      let oldTask = await taskService.getTask(request.params.id, userId);
+      if (oldTask) {
+        let file = request.file || {
+          filename: oldTask.fileName,
+          originalname: oldTask.realFileName
+        };
+        let taskIsCompleted = "true" == request.body.completed;
+        let task = {
+          _id: request.params.id,
+          title: request.body.title,
+          completed: taskIsCompleted,
+          dueDate: request.body.dueDate,
+          fileName: file.originalname,
+          realFileName: file.filename,
+          user: userId
+        };
+        task = await taskService.updateTask(task);
+        response.status(200).send(task);
+      } else {
+        response.status(404).send({});
+      }
+    } else {
+      response.status(401).send({});
+    }
+  }
+);
 
 // Add task
-router.post("/", upload.single("attachedFile"), async (request, response) => {
-  let file = request.file || {
-    filename: undefined,
-    originalname: undefined
-  };
-  let taskIsCompleted = "true" == request.body.completed;
-  let task = {
-    title: request.body.title,
-    completed: taskIsCompleted,
-    dueDate: request.body.dueDate,
-    fileName: file.originalname,
-    realFileName: file.filename
-  };
-  let addedTask = await taskService.addTask(task);
-  response.status(201).send(addedTask);
-});
+router.post(
+  "/",
+  validateToken,
+  upload.single("attachedFile"),
+  async (request, response) => {
+    let userId = request.userId;
+    if (userId) {
+      let file = request.file || {
+        filename: undefined,
+        originalname: undefined
+      };
+      let taskIsCompleted = "true" == request.body.completed;
+      let task = {
+        title: request.body.title,
+        completed: taskIsCompleted,
+        dueDate: request.body.dueDate,
+        fileName: file.originalname,
+        realFileName: file.filename,
+        user: userId
+      };
+      let addedTask = await taskService.addTask(task);
+      response.status(201).send(addedTask);
+    } else {
+      response.status(401).send({});
+    }
+  }
+);
 
 // Set completed status
-router.put("/:id/status/:completed", async (request, response) => {
-  let completedFlag = request.params.completed == "true";
-  await taskService.setTaskStatus(request.params.id, completedFlag);
-  response.status(204).send({});
-});
+router.put(
+  "/:id/status/:completed",
+  validateToken,
+  async (request, response) => {
+    let userId = request.userId;
+    if (userId) {
+      let completedFlag = request.params.completed == "true";
+      await taskService.setTaskStatus(request.params.id, completedFlag, userId);
+      response.status(204).send({});
+    } else {
+      response.status(401).send({});
+    }
+  }
+);
 
 // Download file
-router.get("/download/:fileName", (request, response) => {
-  let filepath = path.join(uploadsDirectory, request.params.fileName);
-  response.status(200).sendFile(filepath);
+router.get("/download/:fileName", validateToken, (request, response) => {
+  if (request.userId) {
+    let filepath = path.join(uploadsDirectory, request.params.fileName);
+    response.status(200).sendFile(filepath);
+  } else {
+    response.status(401).send({});
+  }
 });
 
 // Delete attached file
-router.delete("/:id/removefile", async (request, response) => {
-  await taskService.deleteFile(request.params.id);
-  response.status(204).send({});
+router.delete("/:id/removefile", validateToken, async (request, response) => {
+  let userId = request.userId;
+  if (userId) {
+    await taskService.deleteFile(request.params.id, userId);
+    response.status(204).send({});
+  } else {
+    response.status(401).send({});
+  }
 });
 
 module.exports = router;
