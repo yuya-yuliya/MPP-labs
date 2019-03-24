@@ -1,40 +1,52 @@
 const path = require("path");
 const mongoose = require("mongoose");
 const fs = require("fs");
+const UserService = require("./user.service");
 
-Task = mongoose.model("Task");
+const Schema = mongoose.Schema;
+const Task = mongoose.model("Task");
+//const User = mongoose.model("User");
 
 class TaskService {
   constructor() {
-    this.fileDirPath = path.join(
+    this._userService = new UserService();
+    this._fileDirPath = path.join(
       path.dirname(require.main.filename),
       "public",
       "uploads"
     );
   }
 
-  async getTasks() {
-    return await Task.find();
+  async getTasks(userId) {
+    const user = await this._userService.getUserById(userId);
+    if (user) {
+      return await Task.find({ user: user._id });
+    }
+
+    return undefined;
   }
 
-  async getTask(id) {
-    return await Task.findById(id);
+  async getTask(id, userId) {
+    return await Task.findOne({ _id: id, user: userId });
   }
 
   async addTask(task) {
-    let matchTask = await Task.findOne(task);
-    if (!matchTask) {
+    let user = await this._userService.getUserById(task.user);
+    if (user) {
+      task._id = new mongoose.Types.ObjectId();
       const newTask = new Task(task);
       await newTask.save();
-      task._id = newTask._id;
       return task;
     }
 
     return undefined;
   }
 
-  async setTaskStatus(id, completed) {
-    await Task.updateOne({ _id: id }, { $set: { completed: completed } });
+  async setTaskStatus(id, completed, userId) {
+    await Task.updateOne(
+      { _id: id, user: userId },
+      { $set: { completed: completed } }
+    );
   }
 
   async updateTask(task) {
@@ -42,24 +54,26 @@ class TaskService {
       await this.deleteFile(task._id);
     }
 
-    await Task.updateOne({ _id: task._id }, { $set: task });
+    await Task.updateOne({ _id: task._id, user: task.user }, { $set: task });
     return task;
   }
 
-  async deleteTask(id) {
+  async deleteTask(id, userId) {
+    await Task.deleteOne({ _id: id, user: userId });
     await this.deleteFile(id);
-    await Task.deleteOne({ _id: id });
   }
 
-  async deleteFile(taskId) {
-    let task = await Task.findById(taskId);
-    if (task.realFileName != undefined) {
-      fs.unlink(path.join(this.fileDirPath, task.realFileName), err => {});
-    }
+  async deleteFile(taskId, userId) {
+    let task = await Task.findOne({ _id: taskId, user: userId });
+    if (task) {
+      if (task.realFileName != undefined) {
+        fs.unlink(path.join(this._fileDirPath, task.realFileName), err => {});
+      }
 
-    await Task.updateOne(task, {
-      $set: { fileName: undefined, realFileName: undefined }
-    });
+      await Task.updateOne(task, {
+        $set: { fileName: undefined, realFileName: undefined }
+      });
+    }
   }
 }
 
