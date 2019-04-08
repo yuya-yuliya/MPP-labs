@@ -19,7 +19,7 @@ router.post("/signin", async (request, response) => {
       });
       response.status(200).send({ auth: true, token: token });
     } else {
-      response.status(404).send("No user found.");
+      response.status(404).send({ message: "Wrong login or/and password." });
     }
   } catch {
     return response.status(401).send({ auth: false, token: null });
@@ -37,7 +37,7 @@ router.post("/signup", async (request, response) => {
   if (user) {
     response.status(200).send({});
   } else {
-    response.status(404).send({ message: "Wrong login or/and password." });
+    response.status(400).send({ message: "User with given logig exists." });
   }
 });
 
