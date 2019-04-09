@@ -1,64 +1,120 @@
-import { HttpClient, HttpHeaders } from "@angular/common/http";
-import { Injectable } from "@angular/core";
+import { Injectable, OnDestroy } from "@angular/core";
 import { environment } from "src/environments/environment";
 import { Observable } from "rxjs";
 import { Task } from "../models/task";
+import * as io from "socket.io-client";
+import { UserService } from "./user.service";
 
 @Injectable({
   providedIn: "root"
 })
-export class TaskService {
-  private url = environment.apiUrl + "api/tasks/";
+export class TaskService implements OnDestroy {
+  private socket: SocketIOClient.Socket;
+  private socketPath = "/socket/tasks";
 
-  constructor(private http: HttpClient) {}
+  constructor() {
+    this.socket = io(environment.apiUrl, {
+      path: this.socketPath,
+      query: {
+        token: UserService.token
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.socket.disconnect();
+  }
+
+  onUnauthorized(): Observable<any> {
+    return new Observable<any>(observer => {
+      this.socket.on("unauthorized", () => observer.next());
+    });
+  }
 
   getTasks(): Observable<Array<Task>> {
-    return this.http.get<Array<Task>>(this.url);
+    this.socket.emit("tasks");
+    return new Observable<Array<Task>>(observer => {
+      this.socket.on("tasks", (tasks: Array<Task>) => observer.next(tasks));
+    });
   }
 
   getTask(taskId: string): Observable<Task> {
-    return this.http.get<Task>(`${this.url}${taskId}`);
+    this.socket.emit("taskbyid", taskId);
+    return new Observable<Task>(observer => {
+      this.socket.on("taskbyid", (task: Task) => observer.next(task));
+    });
   }
 
   addTask(task: Task, attachedFile: any): Observable<Task> {
-    return this.http.post<Task>(this.url, this.getFormData(task, attachedFile));
+    if (attachedFile) {
+      let fileReader = new FileReader();
+      let slice = attachedFile.slice(0, attachedFile.size);
+      fileReader.readAsArrayBuffer(slice);
+      fileReader.onloadend = ev => {
+        var arrayBuffer = fileReader.result;
+        this.socket.emit("create", {
+          task: task,
+          file: { fileName: attachedFile.name, data: arrayBuffer }
+        });
+      };
+    } else {
+      this.socket.emit("create", { task: task, file: undefined });
+    }
+
+    return new Observable<Task>(observer => {
+      this.socket.on("create", (task: Task) => observer.next(task));
+    });
   }
 
   updateTask(task: Task, attachedFile: any): Observable<Task> {
-    return this.http.put<Task>(
-      `${this.url}${task._id}`,
-      this.getFormData(task, attachedFile)
-    );
-  }
+    if (attachedFile) {
+      let fileReader = new FileReader();
+      let slice = attachedFile.slice(0, attachedFile.size);
+      fileReader.readAsArrayBuffer(slice);
+      fileReader.onloadend = ev => {
+        var arrayBuffer = fileReader.result;
+        this.socket.emit("update", {
+          id: task._id,
+          task: task,
+          file: { fileName: attachedFile.name, data: arrayBuffer }
+        });
+      };
+    } else {
+      this.socket.emit("update", { id: task._id, task: task, file: undefined });
+    }
 
-  deleteTask(taskId: string): Observable<Object> {
-    return this.http.delete<Task>(`${this.url}${taskId}`);
-  }
-
-  setTaskStatus(taskId: string, completedStatus: boolean): Observable<Object> {
-    return this.http.put(
-      `${this.url}${taskId}/status/${completedStatus}`,
-      null
-    );
-  }
-
-  downloadFile(originalFileName: String): Observable<Object> {
-    return this.http.get(`${this.url}/download/${originalFileName}`, {
-      responseType: "blob",
-      headers: new HttpHeaders().append("Content-Type", "application/json")
+    return new Observable<Task>(observer => {
+      this.socket.on("update", (task: Task) => observer.next(task));
     });
   }
 
-  removeFile(taskId: String): Observable<Object> {
-    return this.http.delete(`${this.url}${taskId}/removefile`);
+  deleteTask(taskId: string): Observable<Boolean> {
+    this.socket.emit("delete", taskId);
+    return new Observable<Boolean>(observer => {
+      this.socket.on("delete", (flag: Boolean) => observer.next(flag));
+    });
   }
 
-  private getFormData(task: Task, attachedFile: any): FormData {
-    let formData = new FormData();
-    formData.append("attachedFile", attachedFile);
-    Object.getOwnPropertyNames(task).forEach(value => {
-      formData.append(value, task[value]);
+  setTaskStatus(taskId: string, completedStatus: boolean): Observable<Boolean> {
+    this.socket.emit("status", { id: taskId, status: completedStatus });
+    return new Observable<Boolean>(observer => {
+      this.socket.on("status", (flag: Boolean) => observer.next(flag));
     });
-    return formData;
+  }
+
+  removeFile(taskId: String): Observable<Boolean> {
+    this.socket.emit("deletefile", taskId);
+    return new Observable<Boolean>(observer => {
+      this.socket.on("deletefile", (flag: Boolean) => observer.next(flag));
+    });
+  }
+
+  downloadFile(originalFileName: String): Observable<Blob> {
+    this.socket.emit("download", originalFileName);
+    return new Observable<Blob>(observer => {
+      this.socket.on("download", (data: ArrayBuffer) =>
+        observer.next(new Blob([data], { type: "application/octet-stream" }))
+      );
+    });
   }
 }

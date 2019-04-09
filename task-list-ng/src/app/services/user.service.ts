@@ -10,19 +10,19 @@ import { Observable } from "rxjs";
 })
 export class UserService {
   private url = environment.apiUrl + "api/users/";
-  private tokenKey = "token";
+  private static tokenKey = "token";
 
   constructor(private http: HttpClient) {}
 
-  get token() {
-    return localStorage.getItem(this.tokenKey);
+  static get token() {
+    return localStorage.getItem(UserService.tokenKey);
   }
 
   signin(user: User) {
     return this.http.post<any>(`${this.url}signin`, user).pipe(
       map(data => {
         if (data && data.token) {
-          localStorage.setItem(this.tokenKey, data.token);
+          localStorage.setItem(UserService.tokenKey, data.token);
         }
 
         return data;
@@ -35,6 +35,6 @@ export class UserService {
   }
 
   signout() {
-    localStorage.removeItem(this.tokenKey);
+    localStorage.removeItem(UserService.tokenKey);
   }
 }

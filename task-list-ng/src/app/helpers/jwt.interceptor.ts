@@ -10,13 +10,13 @@ import { UserService } from "../services/user.service";
 
 @Injectable()
 export class JwtInterceptor implements HttpInterceptor {
-  constructor(private userService: UserService) {}
+  constructor() {}
 
   intercept(
     request: HttpRequest<any>,
     next: HttpHandler
   ): Observable<HttpEvent<any>> {
-    let currentToken = this.userService.token;
+    let currentToken = UserService.token;
     if (currentToken) {
       request = request.clone({
         setHeaders: {

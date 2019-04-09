@@ -21,7 +21,7 @@ export class AuthenticationComponent implements OnInit {
     private router: Router,
     private userService: UserService
   ) {
-    if (this.userService.token) {
+    if (UserService.token) {
       this.router.navigate(["/"]);
     }
   }
@@ -35,7 +35,6 @@ export class AuthenticationComponent implements OnInit {
     this.returnUrl = this.route.snapshot.queryParams["returnUrl"] || "/";
   }
 
-  // convenience getter for easy access to form fields
   get form() {
     return this.signinForm.controls;
   }
@@ -43,7 +42,6 @@ export class AuthenticationComponent implements OnInit {
   onSubmit() {
     this.submitted = true;
 
-    // stop here if form is invalid
     if (this.signinForm.invalid) {
       return;
     }
@@ -56,7 +54,7 @@ export class AuthenticationComponent implements OnInit {
           this.router.navigate([this.returnUrl]);
         },
         error => {
-          window.alert(error.message);
+          window.alert(error);
         }
       );
   }

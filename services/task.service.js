@@ -3,9 +3,7 @@ const mongoose = require("mongoose");
 const fs = require("fs");
 const UserService = require("./user.service");
 
-const Schema = mongoose.Schema;
 const Task = mongoose.model("Task");
-//const User = mongoose.model("User");
 
 class TaskService {
   constructor() {
@@ -51,7 +49,7 @@ class TaskService {
 
   async updateTask(task) {
     if (task.fileName) {
-      await this.deleteFile(task._id);
+      await this.deleteFile(task._id, task.user);
     }
 
     await Task.updateOne({ _id: task._id, user: task.user }, { $set: task });
@@ -59,8 +57,8 @@ class TaskService {
   }
 
   async deleteTask(id, userId) {
+    await this.deleteFile(id, userId);
     await Task.deleteOne({ _id: id, user: userId });
-    await this.deleteFile(id);
   }
 
   async deleteFile(taskId, userId) {

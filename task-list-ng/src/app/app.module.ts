@@ -7,7 +7,6 @@ import { HttpClient, HttpClientModule, HTTP_INTERCEPTORS } from "@angular/common
 import { AppRoutingModule } from "./app-routing.module";
 import { AppComponent } from "./app.component";
 import { MainPageComponent } from "./main-page/main-page.component";
-import { TaskService } from "./services/task.service";
 import { TaskEditComponent } from "./task-edit/task-edit.component";
 import { AuthenticationComponent } from './authentication/authentication.component';
 import { RegistrationComponent } from './registration/registration.component';
@@ -31,9 +30,7 @@ import { ErrorInterceptor } from './helpers/error.interceptor';
     { provide: HTTP_INTERCEPTORS, useClass: ErrorInterceptor, multi: true },
 
     // Angular providers
-    HttpClient,
-    // Application providers
-    TaskService
+    HttpClient
   ],
   bootstrap: [AppComponent]
 })
