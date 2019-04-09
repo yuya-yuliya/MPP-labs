@@ -4,11 +4,13 @@ import { TaskService } from "../services/task.service";
 import { saveAs } from "file-saver";
 import { UserService } from "../services/user.service";
 import { Router } from "@angular/router";
+import { first } from "rxjs/operators";
 
 @Component({
   selector: "app-main-page",
   templateUrl: "./main-page.component.html",
-  styleUrls: ["./main-page.component.css"]
+  styleUrls: ["./main-page.component.css"],
+  providers: [TaskService]
 })
 export class MainPageComponent implements OnInit {
   tasks: Task[];
@@ -20,7 +22,15 @@ export class MainPageComponent implements OnInit {
     private router: Router,
     private taskService: TaskService,
     private userService: UserService
-  ) {}
+  ) {
+    this.taskService
+      .onUnauthorized()
+      .pipe(first())
+      .subscribe(() => {
+        this.userService.signout();
+        this.router.navigate(["/signin"]);
+      });
+  }
 
   get visibleTasks(): Task[] {
     if (this.filter !== undefined) {
@@ -37,10 +47,15 @@ export class MainPageComponent implements OnInit {
 
   onDelete(taskId: string) {
     let index = this.tasks.findIndex(task => task._id == taskId);
-    this.taskService.deleteTask(taskId).subscribe(o => {
-      this.tasks.splice(index, 1);
-      this.editPanel = false;
-    });
+    this.taskService
+      .deleteTask(taskId)
+      .pipe(first())
+      .subscribe(flag => {
+        if (flag) {
+          this.tasks.splice(index, 1);
+          this.editPanel = false;
+        }
+      });
   }
 
   signout() {
@@ -53,20 +68,23 @@ export class MainPageComponent implements OnInit {
   }
 
   getTasks() {
-    this.taskService.getTasks().subscribe(
-      t => {
-        this.tasks = t;
-        this.filter = undefined;
-      },
-      error => {
-        this.tasks = [
-          new Task("1", "my", false, new Date(), undefined, undefined)
-        ];
-      }
-    );
+    this.taskService
+      .getTasks()
+      .pipe(first())
+      .subscribe(
+        tasks => {
+          this.tasks = tasks;
+          this.filter = undefined;
+        },
+        error => {
+          this.tasks = [
+            new Task("1", "my", false, new Date(), undefined, undefined)
+          ];
+        }
+      );
   }
 
-  onFilterChange(filterValue) {
+  onFilterChange(filterValue: any) {
     if (filterValue != "undefined") {
       this.filter = filterValue == "true";
     } else {
@@ -75,12 +93,19 @@ export class MainPageComponent implements OnInit {
   }
 
   onStatusChange(taskId: string, completed: boolean) {
-    this.taskService.setTaskStatus(taskId, completed).subscribe(o => {
-      const index: number = this.tasks.findIndex(value => value._id == taskId);
-      if (index != -1) {
-        this.tasks[index].completed = completed;
-      }
-    });
+    this.taskService
+      .setTaskStatus(taskId, completed)
+      .pipe(first())
+      .subscribe(flag => {
+        if (flag) {
+          const index: number = this.tasks.findIndex(
+            value => value._id == taskId
+          );
+          if (index != -1) {
+            this.tasks[index].completed = completed;
+          }
+        }
+      });
   }
 
   onEdit(taskId: string) {
@@ -97,17 +122,25 @@ export class MainPageComponent implements OnInit {
     let task = this.tasks.find(value => value._id == taskId);
 
     if (task != undefined) {
-      this.taskService.downloadFile(task.realFileName).subscribe(data => {
-        saveAs(data, task.fileName);
-      });
+      this.taskService
+        .downloadFile(task.realFileName)
+        .pipe(first())
+        .subscribe(data => {
+          saveAs(data, task.fileName);
+        });
     }
   }
 
   onFileRemove(taskId: String) {
-    this.taskService.removeFile(taskId).subscribe(o => {
-      let task = this.tasks.find(value => value._id == taskId);
-      task.fileName = undefined;
-      task.realFileName = undefined;
-    });
+    this.taskService
+      .removeFile(taskId)
+      .pipe(first())
+      .subscribe(flag => {
+        if (flag) {
+          let task = this.tasks.find(value => value._id == taskId);
+          task.fileName = undefined;
+          task.realFileName = undefined;
+        }
+      });
   }
 }

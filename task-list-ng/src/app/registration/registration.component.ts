@@ -19,7 +19,7 @@ export class RegistrationComponent implements OnInit {
     private router: Router,
     private userService: UserService
   ) {
-    if (this.userService.token) {
+    if (UserService.token) {
       this.router.navigate(["/"]);
     }
   }

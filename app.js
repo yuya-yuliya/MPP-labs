@@ -39,7 +39,7 @@ app.use("/", routes);
 app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "ejs");
 
-const io = socketIo(server);
+const io = socketIo(server, { path: "/socket/tasks" });
 
 setupSocket(io);
 

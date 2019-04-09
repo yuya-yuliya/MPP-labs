@@ -10,10 +10,10 @@ import { UserService } from "../services/user.service";
 
 @Injectable({ providedIn: "root" })
 export class AuthGuard implements CanActivate {
-  constructor(private router: Router, private userService: UserService) {}
+  constructor(private router: Router) {}
 
   canActivate(route: ActivatedRouteSnapshot, state: RouterStateSnapshot) {
-    const currentToken = this.userService.token;
+    const currentToken = UserService.token;
     if (currentToken) {
       return true;
     }

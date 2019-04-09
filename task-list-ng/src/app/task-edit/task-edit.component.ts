@@ -1,7 +1,13 @@
-import { Component, Input, Output, EventEmitter } from "@angular/core";
+import {
+  Component,
+  Input,
+  Output,
+  EventEmitter
+} from "@angular/core";
 import { Task } from "../models/task";
 import { TaskService } from "../services/task.service";
 import { _sanitizeHtml } from "@angular/core/src/sanitization/html_sanitizer";
+import { first } from "rxjs/operators";
 
 @Component({
   selector: "app-task-edit",
@@ -31,10 +37,15 @@ export class TaskEditComponent {
   }
 
   onDelete(taskId: string) {
-    this.taskService.deleteTask(taskId).subscribe(o => {
-      this.tasks.splice(this.index, 1);
-      this.onEditClose();
-    });
+    this.taskService
+      .deleteTask(taskId)
+      .pipe(first())
+      .subscribe(flag => {
+        if (flag) {
+          this.tasks.splice(this.index, 1);
+          this.onEditClose();
+        }
+      });
   }
 
   onEditClose() {
@@ -46,13 +57,17 @@ export class TaskEditComponent {
 
   onSubmit() {
     if (!this.task._id) {
-      this.taskService.addTask(this.task, this.attachedFile).subscribe(task => {
-        this.tasks.push(task);
-        this.onEditClose();
-      });
+      this.taskService
+        .addTask(this.task, this.attachedFile)
+        .pipe(first())
+        .subscribe(task => {
+          this.tasks.push(task);
+          this.onEditClose();
+        });
     } else {
       this.taskService
         .updateTask(this.task, this.attachedFile)
+        .pipe(first())
         .subscribe(task => {
           this.tasks[this.index] = task;
           this.onEditClose();

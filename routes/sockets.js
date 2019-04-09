@@ -1,6 +1,6 @@
 const socketJwt = require("socketio-jwt");
 const TaskService = require("../services/task.service");
-const fsp = require("fs/promises");
+const fsp = require("fs").promises;
 const path = require("path");
 
 const uploadsDirectory = path.join(
@@ -21,6 +21,8 @@ module.exports = io => {
     const userId = socket.decoded_token.id;
     const taskService = new TaskService();
 
+    console.log(`New socket with user ${userId}`);
+
     // Get all tasks
     socket.on("tasks", async () => {
       let tasks = await taskService.getTasks(userId);
@@ -33,7 +35,7 @@ module.exports = io => {
       if (task) {
         socket.emit("tasksbyid", task);
       } else {
-        socket.emit("taskbyid", false);
+        socket.emit("taskbyid", undefined);
       }
     });
 
@@ -71,7 +73,7 @@ module.exports = io => {
         let task = await taskService.updateTask(data.task);
         socket.emit("update", task);
       } else {
-        socket.emit("update", false);
+        socket.emit("update", undefined);
       }
     });
 
@@ -103,15 +105,19 @@ module.exports = io => {
       let arrayBuffer = ToArrayBuffer(dataBuffer);
       socket.emit("download", arrayBuffer);
     });
+
+    socket.on("disconnect", () => {
+      console.log(`User ${userId} disconnected.`);
+    })
   });
 };
 
 async function SaveFile(fileName, data) {
-  let newName = path.join(uploadsDirectory, `${Date.now()}.${fileName}`);
+  let newName = `${Date.now()}.${fileName}`;
 
   let fileData = new Uint8Array(data);
   try {
-    await fsp.writeFile(newName, fileData);
+    await fsp.writeFile(path.join(uploadsDirectory, newName), fileData);
     return newName;
   } catch {
     console.log("File could not be saved.");
