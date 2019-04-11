@@ -1,9 +1,4 @@
-import {
-  Component,
-  Input,
-  Output,
-  EventEmitter
-} from "@angular/core";
+import { Component, Input, Output, EventEmitter } from "@angular/core";
 import { Task } from "../models/task";
 import { TaskService } from "../services/task.service";
 import { _sanitizeHtml } from "@angular/core/src/sanitization/html_sanitizer";
@@ -27,10 +22,13 @@ export class TaskEditComponent {
   constructor(private taskService: TaskService) {}
 
   public get task(): Task {
-    if (this.index !== -1) {
-      return this.tasks[this.index];
-    } else if (!this._task) {
-      this._task = new Task(undefined, "", false, new Date(), "", "");
+    if (!this._task) {
+      if (this.index !== -1) {
+        let task = this.tasks[this.index];
+        this._task = new Task(task._id, task.title, task.completed, task.dueDate, task.fileName, task.realFileName);
+      } else {
+        this._task = new Task(undefined, "", false, new Date(), "", "");
+      }
     }
 
     return this._task;
