@@ -1,7 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const taskSchema = require("./graphQL/taskSchema");
-const userSchema = require("./graphQL/userSchema");
+const schema = require("./graphQL/schema");
 const jwt = require("express-jwt");
 
 // Auth middleware
@@ -11,13 +10,9 @@ const auth = jwt({
 });
 
 router.use("/", auth);
-userSchema.applyMiddleware({
-    app: router,
-    path: "/user"
-});
-taskSchema.applyMiddleware({
-    app: router,
-    path: "/task"
+schema.applyMiddleware({
+  app: router,
+  path: "/"
 });
 
 module.exports = router;

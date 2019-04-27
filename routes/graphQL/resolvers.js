@@ -1,16 +1,33 @@
-const { GraphQLDate } = require("graphql-iso-date");
+require("dotenv").config();
+const UserService = require("../../services/user.service");
 const TaskService = require("../../services/task.service");
+const jwt = require("jsonwebtoken");
+const { GraphQLDate } = require("graphql-iso-date");
 
 const taskService = new TaskService();
+const userService = new UserService();
+const expires = 86400; // 24 houres
+
+const userNotFoundErrorMessage = "404|Wrong login or/and password.";
+const userExistsErrorMessage = "400|User with given login exists.";
 
 const anautnErrorMessage = "401|Anauthorized.";
-const notFoundErrorMessage = "404|Task not found.";
+const taskNotFoundErrorMessage = "404|Task not found.";
 const internalErrorMessage = "500|Error. Try again later.";
 
 const resolvers = {
   Date: GraphQLDate,
 
   Query: {
+    // Sign out
+    signout: (_, args, { userId }) => {
+      if (userId) {
+        return true;
+      } else {
+        return false;
+      }
+    },
+
     // Get all tasks
     tasks: async (_, args, { userId }) => {
       if (userId) {
@@ -28,7 +45,7 @@ const resolvers = {
         if (task) {
           return task;
         } else {
-          throw new Error(notFoundErrorMessage);
+          throw new Error(taskNotFoundErrorMessage);
         }
       } else {
         throw new Error(anautnErrorMessage);
@@ -42,6 +59,33 @@ const resolvers = {
   },
 
   Mutation: {
+    // Sign in
+    signin: async (_, { login, password }) => {
+      try {
+        let user = await userService.getUser(login, password);
+        if (user) {
+          let token = jwt.sign({ userId: user._id }, process.env.SECRET, {
+            expiresIn: expires
+          });
+          return token;
+        } else {
+          throw {};
+        }
+      } catch {
+        throw new Error(userNotFoundErrorMessage);
+      }
+    },
+
+    // Sign up
+    signup: async (_, { user }) => {
+      user = await userService.addUser(user);
+      if (user) {
+        return { login: user.login };
+      } else {
+        throw new Error(userExistsErrorMessage);
+      }
+    },
+
     // Create new task
     createTask: async (_, { task }, { userId }) => {
       if (userId) {
@@ -66,7 +110,7 @@ const resolvers = {
           task = await taskService.updateTask(task);
           return task;
         } else {
-          throw new Error(notFoundErrorMessage);
+          throw new Error(taskNotFoundErrorMessage);
         }
       } else {
         throw new Error(anautnErrorMessage);
@@ -80,7 +124,7 @@ const resolvers = {
           await taskService.deleteTask(id, userId);
           return true;
         } catch {
-          throw new Error(notFoundErrorMessage);
+          throw new Error(taskNotFoundErrorMessage);
         }
       } else {
         throw new Error(anautnErrorMessage);
