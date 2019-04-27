@@ -3,9 +3,7 @@ require("./models/User");
 require("dotenv").config();
 
 const express = require("express");
-const path = require("path");
 const routes = require("./routes/index");
-const layouts = require("express-ejs-layouts");
 const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
 const cors = require("cors");
@@ -30,14 +28,10 @@ const app = express();
 const server = http.createServer(app);
 
 app.use(cors());
-app.use(layouts);
 app.use(express.static("public"));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use("/", routes);
-
-app.set("views", path.join(__dirname, "views"));
-app.set("view engine", "ejs");
 
 const io = socketIo(server, { path: "/socket/tasks" });
 

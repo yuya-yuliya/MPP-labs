@@ -21,8 +21,6 @@ module.exports = io => {
     const userId = socket.decoded_token.id;
     const taskService = new TaskService();
 
-    console.log(`New socket with user ${userId}`);
-
     // Get all tasks
     socket.on("tasks", async () => {
       let tasks = await taskService.getTasks(userId);
@@ -105,10 +103,6 @@ module.exports = io => {
       let arrayBuffer = ToArrayBuffer(dataBuffer);
       socket.emit("download", arrayBuffer);
     });
-
-    socket.on("disconnect", () => {
-      console.log(`User ${userId} disconnected.`);
-    })
   });
 };
 
