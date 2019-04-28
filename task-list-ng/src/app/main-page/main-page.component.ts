@@ -22,15 +22,7 @@ export class MainPageComponent implements OnInit {
     private router: Router,
     private taskService: TaskService,
     private userService: UserService
-  ) {
-    this.taskService
-      .onUnauthorized()
-      .pipe(first())
-      .subscribe(() => {
-        this.userService.signout();
-        this.router.navigate(["/signin"]);
-      });
-  }
+  ) {}
 
   get visibleTasks(): Task[] {
     if (this.filter !== undefined) {

@@ -1,120 +1,202 @@
-import { Injectable, OnDestroy } from "@angular/core";
-import { environment } from "src/environments/environment";
+import { Injectable } from "@angular/core";
 import { Observable } from "rxjs";
 import { Task } from "../models/task";
-import * as io from "socket.io-client";
-import { UserService } from "./user.service";
+import { Apollo } from "apollo-angular";
+import gql from "graphql-tag";
+import { map } from "rxjs/operators";
+import { environment } from "src/environments/environment";
+import { HttpClient, HttpHeaders } from "@angular/common/http";
 
 @Injectable({
   providedIn: "root"
 })
-export class TaskService implements OnDestroy {
-  private socket: SocketIOClient.Socket;
-  private socketPath = "/socket/tasks";
+export class TaskService {
+  private url = environment.apiUrl + "api/tasks/";
 
-  constructor() {
-    this.socket = io(environment.apiUrl, {
-      path: this.socketPath,
-      query: {
-        token: UserService.token
+  constructor(private apollo: Apollo, private http: HttpClient) {}
+
+  getTasks(): Observable<Task[]> {
+    let tasksQuery = gql`
+      query tasks {
+        tasks {
+          ...userTask
+        }
       }
-    });
-  }
 
-  ngOnDestroy(): void {
-    this.socket.disconnect();
-  }
+      fragment userTask on Task {
+        _id
+        title
+        completed
+        dueDate
+        fileName
+        realFileName
+      }
+    `;
 
-  onUnauthorized(): Observable<any> {
-    return new Observable<any>(observer => {
-      this.socket.on("unauthorized", () => observer.next());
-    });
-  }
-
-  getTasks(): Observable<Array<Task>> {
-    this.socket.emit("tasks");
-    return new Observable<Array<Task>>(observer => {
-      this.socket.on("tasks", (tasks: Array<Task>) => observer.next(tasks));
-    });
+    return this.apollo
+      .query<any>({
+        query: tasksQuery
+      })
+      .pipe(
+        map(({ data }) => data.tasks.map((value: any) => this.mapTask(value)))
+      );
   }
 
   getTask(taskId: string): Observable<Task> {
-    this.socket.emit("taskbyid", taskId);
-    return new Observable<Task>(observer => {
-      this.socket.on("taskbyid", (task: Task) => observer.next(task));
-    });
+    let taskByIdQuery = gql`
+      query taskbyid($id: String!) {
+        taskById(id: $id) {
+          ...userTask
+        }
+      }
+
+      fragment userTask on Task {
+        _id
+        title
+        completed
+        dueDate
+        fileName
+        realFileName
+      }
+    `;
+
+    return this.apollo
+      .query<any>({
+        query: taskByIdQuery,
+        variables: {
+          id: taskId
+        }
+      })
+      .pipe(map(({ data }) => this.mapTask(data.taskById)));
   }
 
-  addTask(task: Task, attachedFile: any): Observable<Task> {
-    if (attachedFile) {
-      let fileReader = new FileReader();
-      let slice = attachedFile.slice(0, attachedFile.size);
-      fileReader.readAsArrayBuffer(slice);
-      fileReader.onloadend = ev => {
-        var arrayBuffer = fileReader.result;
-        this.socket.emit("create", {
-          task: task,
-          file: { fileName: attachedFile.name, data: arrayBuffer }
-        });
-      };
-    } else {
-      this.socket.emit("create", { task: task, file: undefined });
-    }
+  addTask(task: Task, attachedFile: File): Observable<Task> {
+    let createMutation = gql`
+      mutation createTask($task: TaskInput!, $file: Upload) {
+        createTask(task: $task, file: $file) {
+          ...userTask
+        }
+      }
+      fragment userTask on Task {
+        _id
+        title
+        completed
+        dueDate
+        fileName
+        realFileName
+      }
+    `;
 
-    return new Observable<Task>(observer => {
-      this.socket.on("create", (task: Task) => observer.next(task));
-    });
+    task._id = "";
+    task.fileName = null;
+    task.realFileName = null;
+
+    return this.apollo
+      .mutate<any>({
+        mutation: createMutation,
+        variables: {
+          task: task,
+          file: attachedFile
+        }
+      })
+      .pipe(map(({ data }) => this.mapTask(data.createTask)));
   }
 
   updateTask(task: Task, attachedFile: any): Observable<Task> {
-    if (attachedFile) {
-      let fileReader = new FileReader();
-      let slice = attachedFile.slice(0, attachedFile.size);
-      fileReader.readAsArrayBuffer(slice);
-      fileReader.onloadend = ev => {
-        var arrayBuffer = fileReader.result;
-        this.socket.emit("update", {
-          id: task._id,
-          task: task,
-          file: { fileName: attachedFile.name, data: arrayBuffer }
-        });
-      };
-    } else {
-      this.socket.emit("update", { id: task._id, task: task, file: undefined });
-    }
+    let updateMutation = gql`
+      mutation updateTask($task: TaskInput!, $file: Upload) {
+        updateTask(task: $task, file: $file) {
+          ...userTask
+        }
+      }
+      fragment userTask on Task {
+        _id
+        title
+        completed
+        dueDate
+        fileName
+        realFileName
+      }
+    `;
 
-    return new Observable<Task>(observer => {
-      this.socket.on("update", (task: Task) => observer.next(task));
-    });
+    return this.apollo
+      .mutate<any>({
+        mutation: updateMutation,
+        variables: {
+          task: task,
+          file: attachedFile
+        }
+      })
+      .pipe(map(({ data }) => this.mapTask(data.updateTask)));
   }
 
   deleteTask(taskId: string): Observable<Boolean> {
-    this.socket.emit("delete", taskId);
-    return new Observable<Boolean>(observer => {
-      this.socket.on("delete", (flag: Boolean) => observer.next(flag));
-    });
+    let deleteMutation = gql`
+      mutation deleteTask($id: String!) {
+        deleteTask(id: $id)
+      }
+    `;
+
+    return this.apollo
+      .mutate({
+        mutation: deleteMutation,
+        variables: {
+          id: taskId
+        }
+      })
+      .pipe(map(({ data }) => data.deleteTask));
   }
 
   setTaskStatus(taskId: string, completedStatus: boolean): Observable<Boolean> {
-    this.socket.emit("status", { id: taskId, status: completedStatus });
-    return new Observable<Boolean>(observer => {
-      this.socket.on("status", (flag: Boolean) => observer.next(flag));
-    });
+    let setStatusMutation = gql`
+      mutation setTaskStatus($id: String!, $completed: Boolean!) {
+        setTaskStatus(id: $id, completed: $completed)
+      }
+    `;
+
+    return this.apollo
+      .mutate({
+        mutation: setStatusMutation,
+        variables: {
+          id: taskId,
+          completed: completedStatus
+        }
+      })
+      .pipe(map(({ data }) => data.setTaskStatus));
   }
 
   removeFile(taskId: String): Observable<Boolean> {
-    this.socket.emit("deletefile", taskId);
-    return new Observable<Boolean>(observer => {
-      this.socket.on("deletefile", (flag: Boolean) => observer.next(flag));
-    });
+    let removeFileMutation = gql`
+      mutation deleteAttachedFile($id: String!) {
+        deleteAttachedFile(id: $id)
+      }
+    `;
+
+    return this.apollo
+      .mutate({
+        mutation: removeFileMutation,
+        variables: {
+          id: taskId
+        }
+      })
+      .pipe(map(({ data }) => data.deleteAttachedFile));
   }
 
   downloadFile(originalFileName: String): Observable<Blob> {
-    this.socket.emit("download", originalFileName);
-    return new Observable<Blob>(observer => {
-      this.socket.on("download", (data: ArrayBuffer) =>
-        observer.next(new Blob([data], { type: "application/octet-stream" }))
-      );
+    return this.http.get(`${this.url}/download/${originalFileName}`, {
+      responseType: "blob",
+      headers: new HttpHeaders().append("Content-Type", "application/json")
     });
+  }
+
+  private mapTask(rawTask: any): Task {
+    return new Task(
+      rawTask._id,
+      rawTask.title,
+      rawTask.completed,
+      rawTask.dueDate,
+      rawTask.fileName,
+      rawTask.realFileName
+    );
   }
 }

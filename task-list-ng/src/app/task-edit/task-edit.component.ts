@@ -17,16 +17,23 @@ export class TaskEditComponent {
   @Output() editHide: EventEmitter<boolean> = new EventEmitter<boolean>();
 
   _task: Task;
-  attachedFile: any;
+  attachedFile: File;
 
   constructor(private taskService: TaskService) {}
 
   public get task(): Task {
     if (!this._task) {
       if (this.index !== -1) {
-        let task = this.tasks[this.index];
-        this._task = new Task(task._id, task.title, task.completed, task.dueDate, task.fileName, task.realFileName);
-      } else {
+        let rootTask = this.tasks[this.index];
+        this._task = new Task(
+          rootTask._id,
+          rootTask.title,
+          rootTask.completed,
+          rootTask.dueDate,
+          rootTask.fileName,
+          rootTask.realFileName
+        );
+      } else if (!this._task) {
         this._task = new Task(undefined, "", false, new Date(), "", "");
       }
     }
