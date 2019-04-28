@@ -48,10 +48,6 @@ class TaskService {
   }
 
   async updateTask(task) {
-    if (task.fileName) {
-      await this.deleteFile(task._id, task.user);
-    }
-
     await Task.updateOne({ _id: task._id, user: task.user }, { $set: task });
     return task;
   }
@@ -63,7 +59,7 @@ class TaskService {
 
   async deleteFile(taskId, userId) {
     let task = await Task.findOne({ _id: taskId, user: userId });
-    if (task) {
+    if (task && task.realFileName) {
       if (task.realFileName != undefined) {
         fs.unlink(path.join(this._fileDirPath, task.realFileName), err => {});
       }

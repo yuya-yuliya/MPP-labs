@@ -2,7 +2,16 @@ require("dotenv").config();
 const UserService = require("../../services/user.service");
 const TaskService = require("../../services/task.service");
 const jwt = require("jsonwebtoken");
-const { GraphQLDate } = require("graphql-iso-date");
+const { GraphQLDateTime } = require("graphql-iso-date");
+
+const path = require("path");
+const fs = require("fs");
+
+const uploadsDirectory = path.join(
+  path.dirname(require.main.filename),
+  "public",
+  "uploads"
+);
 
 const taskService = new TaskService();
 const userService = new UserService();
@@ -16,7 +25,7 @@ const taskNotFoundErrorMessage = "404|Task not found.";
 const internalErrorMessage = "500|Error. Try again later.";
 
 const resolvers = {
-  Date: GraphQLDate,
+  DateTime: GraphQLDateTime,
 
   Query: {
     // Sign out
@@ -50,11 +59,6 @@ const resolvers = {
       } else {
         throw new Error(anautnErrorMessage);
       }
-    },
-
-    // Download attached file
-    downloadFile: (_, { fileName }, { userId }) => {
-      return true;
     }
   },
 
@@ -87,10 +91,22 @@ const resolvers = {
     },
 
     // Create new task
-    createTask: async (_, { task }, { userId }) => {
+    createTask: async (_, { task, file }, { userId }) => {
       if (userId) {
+        task.fileName = undefined;
+        task.realFileName = undefined;
+        if (file) {
+          const { createReadStream, filename } = await file;
+          let stream = createReadStream();
+          let newFileName = saveFile(filename, stream);
+          if (newFileName) {
+            task.fileName = filename;
+            task.realFileName = newFileName;
+          }
+        }
+
         task.user = userId;
-        task = await taskService.addTask(data.task);
+        task = await taskService.addTask(task);
         if (task) {
           return task;
         } else {
@@ -102,10 +118,26 @@ const resolvers = {
     },
 
     // Update task
-    updateTask: async (_, { task }, { userId }) => {
+    updateTask: async (_, { task, file }, { userId }) => {
       if (userId) {
-        let oldTask = await taskService.getTask(task.id, userId);
+        let oldTask = await taskService.getTask(task._id, userId);
         if (oldTask) {
+          task.fileName = undefined;
+          task.realFileName = undefined;
+          if (file) {
+            if (oldTask.fileName) {
+              await taskService.deleteFile(task._id, userId);
+            }
+
+            const { createReadStream, filename } = await file;
+            let stream = createReadStream();
+            let newFileName = await saveFile(filename, stream);
+            if (newFileName) {
+              task.fileName = filename;
+              task.realFileName = newFileName;
+            }
+          }
+
           task.user = userId;
           task = await taskService.updateTask(task);
           return task;
@@ -152,5 +184,23 @@ const resolvers = {
     }
   }
 };
+
+function saveFile(fileName, stream) {
+  let newName = `${Date.now()}.${fileName}`;
+  let filePath = path.join(uploadsDirectory, newName);
+
+  return new Promise((resolve, reject) =>
+    stream
+      .on("error", error => {
+        if (stream.truncated) {
+          fs.unlinkSync(filePath);
+        }
+        reject(error);
+      })
+      .pipe(fs.createWriteStream(filePath))
+      .on("error", error => reject(error))
+      .on("finish", () => resolve(newName))
+  );
+}
 
 module.exports = resolvers;

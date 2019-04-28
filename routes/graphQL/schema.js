@@ -1,4 +1,4 @@
-const resolvers = require("./taskResolvers");
+const resolvers = require("./resolvers");
 const { gql, ApolloServer } = require("apollo-server-express");
 
 const schema = gql`
@@ -7,15 +7,14 @@ const schema = gql`
 
     tasks: [Task]
     taskById(id: String!): Task
-    downloadFile(fileName: String!): Boolean
   }
 
   type Mutation {
     signin(login: String!, password: String!): String
     signup(user: UserInput!): User
 
-    createTask(task: TaskInput!): Task
-    updateTask(task: TaskInput!): Task
+    createTask(task: TaskInput!, file: Upload): Task
+    updateTask(task: TaskInput!, file: Upload): Task
     deleteTask(id: String!): Boolean
     setTaskStatus(id: String!, completed: Boolean!): Boolean
     deleteAttachedFile(id: String!): Boolean
@@ -32,30 +31,29 @@ const schema = gql`
 
   input TaskInput {
     _id: String!
-    user: String!
     title: String!
     completed: Boolean!
-    dueDate: Date!
+    dueDate: DateTime!
     fileName: String
     realFileName: String
   }
 
   type Task {
     _id: String!
-    user: String!
     title: String!
     completed: Boolean!
-    dueDate: Date!
+    dueDate: DateTime!
     fileName: String
     realFileName: String
   }
 
-  scalar Date
+  scalar DateTime
 `;
 
 module.exports = new ApolloServer({
   typeDefs: schema,
   resolvers: resolvers,
+  introspection: true,
   playground: {
     settings: {
       "editor.theme": "light"
@@ -67,5 +65,12 @@ module.exports = new ApolloServer({
       code: errorInfo[0],
       message: errorInfo[1]
     };
+  },
+  context: ({ req }) => {
+    if (req.user) {
+      return { userId: req.user.userId };
+    } else {
+      return {};
+    }
   }
 });
