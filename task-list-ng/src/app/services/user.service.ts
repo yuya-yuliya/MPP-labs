@@ -69,5 +69,6 @@ export class UserService {
 
   signout() {
     localStorage.removeItem(UserService.tokenKey);
+    this.apollo.getClient().resetStore();
   }
 }
