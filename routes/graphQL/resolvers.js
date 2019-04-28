@@ -98,7 +98,7 @@ const resolvers = {
         if (file) {
           const { createReadStream, filename } = await file;
           let stream = createReadStream();
-          let newFileName = saveFile(filename, stream);
+          let newFileName = await saveFile(filename, stream);
           if (newFileName) {
             task.fileName = filename;
             task.realFileName = newFileName;
