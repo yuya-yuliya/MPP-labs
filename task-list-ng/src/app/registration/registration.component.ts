@@ -4,6 +4,7 @@ import { Router } from "@angular/router";
 import { UserService } from "../services/user.service";
 import { User } from "../models/user";
 import { first } from "rxjs/operators";
+import { ApolloError } from "apollo-client";
 
 @Component({
   selector: "app-registration",
@@ -50,8 +51,8 @@ export class RegistrationComponent implements OnInit {
           window.alert("Registration successful");
           this.router.navigate(["/signin"]);
         },
-        error => {
-          window.alert(error);
+        (error: ApolloError) => {
+          window.alert(error.graphQLErrors[0].message);
         }
       );
   }

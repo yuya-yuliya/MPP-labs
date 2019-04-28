@@ -4,6 +4,7 @@ import { ActivatedRoute, Router } from "@angular/router";
 import { UserService } from "../services/user.service";
 import { User } from "../models/user";
 import { first } from "rxjs/operators";
+import { ApolloError } from "apollo-client";
 
 @Component({
   selector: "app-authentication",
@@ -53,8 +54,8 @@ export class AuthenticationComponent implements OnInit {
         data => {
           this.router.navigate([this.returnUrl]);
         },
-        error => {
-          window.alert(error);
+        (error: ApolloError) => {
+          window.alert(error.graphQLErrors[0].message);
         }
       );
   }

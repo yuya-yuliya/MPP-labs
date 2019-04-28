@@ -1,9 +1,4 @@
-import {
-  Component,
-  Input,
-  Output,
-  EventEmitter
-} from "@angular/core";
+import { Component, Input, Output, EventEmitter } from "@angular/core";
 import { Task } from "../models/task";
 import { TaskService } from "../services/task.service";
 import { _sanitizeHtml } from "@angular/core/src/sanitization/html_sanitizer";
@@ -22,15 +17,25 @@ export class TaskEditComponent {
   @Output() editHide: EventEmitter<boolean> = new EventEmitter<boolean>();
 
   _task: Task;
-  attachedFile: any;
+  attachedFile: File;
 
   constructor(private taskService: TaskService) {}
 
   public get task(): Task {
-    if (this.index !== -1) {
-      return this.tasks[this.index];
-    } else if (!this._task) {
-      this._task = new Task(undefined, "", false, new Date(), "", "");
+    if (!this._task) {
+      if (this.index !== -1) {
+        let rootTask = this.tasks[this.index];
+        this._task = new Task(
+          rootTask._id,
+          rootTask.title,
+          rootTask.completed,
+          rootTask.dueDate,
+          rootTask.fileName,
+          rootTask.realFileName
+        );
+      } else if (!this._task) {
+        this._task = new Task(undefined, "", false, new Date(), "", "");
+      }
     }
 
     return this._task;
